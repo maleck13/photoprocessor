@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"time"
 )
 
 type Picture struct {
@@ -11,6 +12,8 @@ type Picture struct {
 	Path string
 	Thumb string
 	LonLat []float64
+	Time time.Time
+	TimeStamp int64
 
 }
 
@@ -22,7 +25,7 @@ const (
 
 func getDBSession() *mgo.Session{
 	fmt.Println("get db session")
-	session, err := mgo.Dial("192.168.59.103")
+	session, err := mgo.Dial(CONF.GetMongoHost())
 	if err != nil {
 		panic(err)
 	}
@@ -32,19 +35,6 @@ func getDBSession() *mgo.Session{
 	session.SetMode(mgo.Monotonic, true)
 	return session;
 
-//	c := session.DB("test").C("pictures")
-//	err = c.Insert(&Picture{"test", "/test/test.jpg","test/test/test.png",[]float64{52.3434,-7.3434}})
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	result := Picture{}
-//	err = c.Find(bson.M{"name": "test"}).One(&result)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	fmt.Println("Name:", result.Name)
 }
 
 

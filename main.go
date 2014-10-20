@@ -3,7 +3,8 @@ package main
 func main() {
 
 	InitLogger()
-	go ProcessImg("IMG_1335.JPG");
+	LoadConfig()
+	go ProcessImg("IMG_1424.JPG");
 	StartConsuming();
 
 }
