@@ -14,7 +14,8 @@ type Picture struct {
 	LonLat []float64
 	Time time.Time
 	TimeStamp int64
-
+	User string
+	Year string
 }
 
 const (

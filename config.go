@@ -13,6 +13,7 @@ type CONFIG struct {
 	ConcurrentJobs int
 	UseDefaultLonLat bool
 	DefaultLonLat []float64
+	DefaultUser string
 }
 
 const (
@@ -67,4 +68,8 @@ func (c * CONFIG)GetUseDefaultLonLat()bool{
 
 func (c * CONFIG)GetDefaultLonLat()[]float64{
 	return c.DefaultLonLat;
+}
+
+func (c * CONFIG)GetDefaultUser()string{
+	return c.DefaultUser;
 }

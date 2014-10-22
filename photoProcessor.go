@@ -29,9 +29,9 @@ type Persister interface {
 	Save()error
 }
 
-func ProcessPhotoDir() {
+func ProcessPhotoDir(dir, user string) {
 
-	fInfo, err := ioutil.ReadDir(CONF.GetPhotoDir())
+	fInfo, err := ioutil.ReadDir(dir)
 	FailOnError(err, " Error reading dir:")
 
 	// takes filinfo and return a func to be executed uses chan to increment a count
@@ -40,7 +40,7 @@ func ProcessPhotoDir() {
 
 			if !f.IsDir() && strings.Contains(f.Name(), ".JPG") {
 				fmt.Println("processing " + f.Name())
-				ProcessImg(f.Name(),Picture{},CONF)
+				ProcessImg(f.Name(),Picture{},user,CONF)
 			}
 			c <- 1
 		}
@@ -64,7 +64,7 @@ func ProcessPhotoDir() {
 
 }
 
-func ProcessImg(fileName string, pic Picture, conf *CONFIG) {
+func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG) {
 	reader := exif.New()
 	path := conf.GetPhotoDir() + "/" + fileName
 	completedPath := conf.GetProcessedPhotoDir() + "/" + fileName
@@ -108,11 +108,15 @@ func ProcessImg(fileName string, pic Picture, conf *CONFIG) {
 	}
 	pic.Thumb = thumb
 	pic.Time = date
+	pic.Year = date.String()[0:4]
+	pic.User = user
 	pic.TimeStamp = date.Unix()
+	InfoLog.Println(pic);
 	err = pic.Save()
 
 	if err != nil {
 		LogOnError(err, "failed to save picture")
+		//move to failed dir
 	}
 
 	err = copyAndRemove(fileName, conf)

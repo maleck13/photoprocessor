@@ -4,7 +4,7 @@ func main() {
 
 	InitLogger()
 	LoadConfig()
-	go ProcessPhotoDir()
-	StartConsuming();
+	go ProcessPhotoDir(CONF.GetPhotoDir(),CONF.GetDefaultUser())
+ 	StartConsuming();
 
 }
