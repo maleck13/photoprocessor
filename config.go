@@ -11,10 +11,12 @@ import (
 type CONFIG struct {
 	PhotoDir , MongoHost, ProcessedPhotoDir, ThumbnailDir string
 	ConcurrentJobs int
+	UseDefaultLonLat bool
+	DefaultLonLat []float64
 }
 
 const (
-	CONF_PATH = "/etc/photoprocessor/conf.json"
+	CONF_ENV_VAR = "PHOTO_PROC_CONF"
 )
 
 var (
@@ -22,9 +24,10 @@ var (
 )
 
 func LoadConfig (){
-	file,err := os.Open(CONF_PATH)
+	confPath := os.Getenv(CONF_ENV_VAR)
+	file,err := os.Open(confPath)
 	if err != nil{
-		ErrorLog.Fatal("failed to load config " + CONF_PATH + err.Error())
+		ErrorLog.Fatal("failed to load config " + confPath + err.Error())
 	}
 	contentBuf,err := ioutil.ReadAll(file)
 	dec := json.NewDecoder(strings.NewReader(string(contentBuf)))
@@ -56,4 +59,12 @@ func (c * CONFIG)GetProcessedPhotoDir()string{
 
 func (c * CONFIG)GetThumbNailDir()string{
 	return c.ThumbnailDir;
+}
+
+func (c * CONFIG)GetUseDefaultLonLat()bool{
+	return c.UseDefaultLonLat
+}
+
+func (c * CONFIG)GetDefaultLonLat()[]float64{
+	return c.DefaultLonLat;
 }

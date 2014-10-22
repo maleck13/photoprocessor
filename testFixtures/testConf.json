@@ -1,0 +1,10 @@
+{
+  "photoDir":"/opt/data/pictures",
+  "processedPhotoDir":"/opt/data/completedPics",
+  "thumbnailDir":"/opt/data/thumbs",
+  "mongoHost":"mongodb://photomapuser:Cft6Vgy7Bhu8@ds033170.mongolab.com:33170/photomap",
+  "concurrentJobs":10,
+  "useDefaultLonLat":true,
+  "defaultLonLat":[-7.138333333333334,52.2555]
+
+}

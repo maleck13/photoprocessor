@@ -4,7 +4,7 @@ func main() {
 
 	InitLogger()
 	LoadConfig()
-	go ProcessImg("IMG_1424.JPG");
+	go ProcessPhotoDir()
 	StartConsuming();
 
 }

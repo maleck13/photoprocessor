@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"time"
+	"gopkg.in/mgo.v2"
 )
 
 type Picture struct {
@@ -40,7 +40,7 @@ func getDBSession() *mgo.Session{
 
 
 
-func SavePic(pic Picture) error{
+func (pic * Picture) Save() error{
 	session := getDBSession();
 	defer session.Close()
 	c := session.DB(DB_NAME).C(PIC_COLLECTION)

@@ -1,8 +1,12 @@
 package main
 
-import "testing"
+import (
+	"testing"
+	"os"
+)
 
 func TestConfig(t *testing.T) {
+	os.Setenv(CONF_ENV_VAR,)
 	dir := "/Users/craigbrookes/Pictures";
 	LoadConfig()
 

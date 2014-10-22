@@ -68,8 +68,7 @@ func StartConsuming() {
 				ErrorLog.Println("error with rabbit msg " + err.Error())
 			}
 			fmt.Printf("%s \n", m.File)
-		//	c:=make(chan int)
-			ProcessImg(m.File)
+			ProcessImg(m.File,Picture{},CONF)
 			d.Ack(true)
 		}
 	}()
