@@ -14,6 +14,7 @@ type CONFIG struct {
 	UseDefaultLonLat bool
 	DefaultLonLat []float64
 	DefaultUser string
+	Rabbiturl string
 }
 
 const (

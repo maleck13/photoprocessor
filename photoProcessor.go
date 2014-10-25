@@ -278,7 +278,7 @@ func createThumb(filepath string, filename string, conf * CONFIG) (string, error
 	defer file.Close()
 	// resize to width 1000 using Lanczos resampling
 	// and preserve aspect ratio
-	m := resize.Resize(350, 0, img, resize.Bicubic)
+	m :=resize.Thumbnail(300,300,img,resize.Bicubic)
 	thumbPath := conf.GetThumbNailDir() + "/" + filename
 	out, err := os.Create(thumbPath)
 

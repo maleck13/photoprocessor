@@ -27,7 +27,7 @@ func StartConsuming() {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		"task_queue", // name
+		"pics", // name
 		true,         // durable
 		false,        // delete when unused
 		false,        // exclusive
