@@ -74,3 +74,7 @@ func (c * CONFIG)GetDefaultLonLat()[]float64{
 func (c * CONFIG)GetDefaultUser()string{
 	return c.DefaultUser;
 }
+
+func (c * CONFIG)GetRabbitURL()string{
+	return c.Rabbiturl;
+}

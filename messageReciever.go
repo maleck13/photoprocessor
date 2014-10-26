@@ -18,7 +18,7 @@ type Message struct {
 
 func StartConsuming() {
 	fmt.Println("start consuming")
-	conn, err := amqp.Dial("amqp://guest:guest@192.168.59.103:5672/")
+	conn, err := amqp.Dial(CONF.GetRabbitURL())
 	FailOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
