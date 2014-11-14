@@ -11,6 +11,6 @@ RUN mkdir -p /opt/data/thumbs
 RUN go get app
 RUN ls -al /gopath/bin
 ENV PHOTO_PROC_CONF /etc/photoprocessor/conf.json
-COPY ./conf.json /etc/photoprocessor/
+#COPY ./conf.json /etc/photoprocessor/
 CMD []
 ENTRYPOINT ["/gopath/bin/app"]
