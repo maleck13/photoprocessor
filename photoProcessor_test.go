@@ -1,12 +1,21 @@
 package main
 
-import "testing"
+import (
+	"testing"
+	"fmt"
+	"os"
+)
 
-func ProcessImg(t *testing.T) {
 
-	b := true
 
-	if ! b {
-		t.Errorf(" CONF.GetPhotoDir() got %s should be %s ", x, dir)
+func TestReadExif (t *testing.T){
+	m,err:=ReadExifData("./testFixtures/DSCF1283.JPG")
+	dir,_:=os.Getwd();
+	if err != nil{
+		t.Errorf(" error getting exif date %s  %s", err.Error(), dir)
+	}
+
+	for k,v := range m{
+		fmt.Println(" key is : " + k + " val = " + v);
 	}
 }

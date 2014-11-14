@@ -26,6 +26,7 @@ var (
 )
 
 func LoadConfig (){
+	fmt.Println("LOADING CONIFG " + os.Getenv(CONF_ENV_VAR))
 	confPath := os.Getenv(CONF_ENV_VAR)
 	file,err := os.Open(confPath)
 	if err != nil{

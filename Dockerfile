@@ -1,17 +1,16 @@
-# Start from a Debian image with the latest version of Go installed
-# and a workspace (GOPATH) configured at /go.
-FROM golang
+FROM google/golang
 
-# Copy the local package files to the container's workspace.
-ADD . ~/goProjects/src/github.com/golang/example/outyet
-
-# Build the outyet command inside the container.
-# (You may fetch or manage dependencies here,
-# either manually or with a tool like "godep".)
-RUN go install github.com/maleck13/photoProcessor
-
-# Run the outyet command by default when the container starts.
-ENTRYPOINT /go/bin/photoProcessor
-
-# Document that the service listens on port 8080.
-EXPOSE 8080
+WORKDIR /gopath/src/app
+ADD . /gopath/src/app/
+RUN apt-get install  libexif-dev libexif12 -y
+RUN mkdir -p /var/log/photoprocessor
+RUN mkdir -p /etc/photoprocessor
+RUN mkdir -p /opt/data/pictures
+RUN mkdir -p /opt/data/completedPics
+RUN mkdir -p /opt/data/thumbs
+RUN go get app
+RUN ls -al /gopath/bin
+ENV PHOTO_PROC_CONF /etc/photoprocessor/conf.json
+COPY ./conf.json /etc/photoprocessor/
+CMD []
+ENTRYPOINT ["/gopath/bin/app"]

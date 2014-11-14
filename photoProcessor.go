@@ -40,7 +40,8 @@ func ProcessPhotoDir(dir, user string) {
 
 			if !f.IsDir() && strings.Contains(f.Name(), ".JPG") {
 				fmt.Println("processing " + f.Name())
-				ProcessImg(f.Name(),Picture{},user,CONF)
+				uc:=make(chan string)
+				ProcessImg(f.Name(),Picture{},user,CONF,uc)
 			}
 			c <- 1
 		}
@@ -64,13 +65,22 @@ func ProcessPhotoDir(dir, user string) {
 
 }
 
-func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG) {
+func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateChanel chan string) {
+	msg:=CreateMessage("starting processing img ","pending")
+	fmt.Println("made message " + msg)
+	updateChanel <- msg
+	defer close(updateChanel)
 	reader := exif.New()
 	path := conf.GetPhotoDir() + "/" + fileName
 	completedPath := conf.GetProcessedPhotoDir() + "/" + fileName
 	err := reader.Open(path)
+	LogOnError(err, "Error reading data from "+path)
+	if nil != err{
+		msg =CreateMessage("Error reading data from "+path,"error")
+		updateChanel<-msg
+		return;
+	}
 
-	LogOnError(err, "failed to open "+path)
 
 	tags := reader.Tags
 	var lonLat []float64
@@ -91,6 +101,8 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG) {
 
 	err = validateTime(tags);
 	if err != nil {
+		msg =CreateMessage("Error no time exif data ","error")
+		updateChanel<-msg
 		LogOnError(err, "missing data")
 		return
 	}
@@ -100,6 +112,10 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG) {
 	pic.Name = fileName
 	pic.Path = completedPath
 	thumb, err := createThumb(path, fileName, conf)
+
+	msg =CreateMessage("Thumbnail created  ","pending")
+	updateChanel<-msg
+
 	date := parseDate(tags[DATE_TIME_KEY])
 
 	if err != nil {
@@ -113,7 +129,8 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG) {
 	pic.TimeStamp = date.Unix()
 	InfoLog.Println(pic);
 	err = pic.Save()
-
+	msg =CreateMessage("Saved to db ","pending")
+	updateChanel<-msg
 	if err != nil {
 		LogOnError(err, "failed to save picture")
 		//move to failed dir
@@ -125,7 +142,31 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG) {
 	}
 
 
+
 }
+
+func ReadExifData (filePath string)(map[string]string,error){
+	reader := exif.New()
+	_,err:=os.Stat(filePath)
+	if nil != err{
+		return nil,err;
+	}
+
+
+
+	err = reader.Open(filePath)
+	//LogOnError(err, "failed to open "+filePath)
+	if nil != err{
+		return nil,err;
+	}
+
+
+	tags := reader.Tags
+
+	return tags,nil;
+}
+
+
 
 func copyAndRemove (fileName string, conf * CONFIG) error{
 	path := conf.GetPhotoDir() + "/" + fileName
@@ -278,7 +319,20 @@ func createThumb(filepath string, filename string, conf * CONFIG) (string, error
 	defer file.Close()
 	// resize to width 1000 using Lanczos resampling
 	// and preserve aspect ratio
-	m :=resize.Thumbnail(300,300,img,resize.Bicubic)
+	var percentHeight,percentWidth uint
+	percentHeight = uint((img.Bounds().Max.Y / 100) * 15);
+	percentWidth = uint((img.Bounds().Max.X / 100) * 15);
+	//bit arbitary
+	if percentHeight < 300{
+		percentHeight = 300;
+	}
+
+	if percentWidth < 300{
+		percentWidth = 300;
+	}
+
+
+	m :=resize.Thumbnail(percentWidth,percentHeight,img,resize.Bicubic)
 	thumbPath := conf.GetThumbNailDir() + "/" + filename
 	out, err := os.Create(thumbPath)
 
