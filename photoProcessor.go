@@ -41,7 +41,11 @@ func ProcessPhotoDir(dir, user string) {
 			if !f.IsDir() && strings.Contains(f.Name(), ".JPG") {
 				fmt.Println("processing " + f.Name())
 				uc:=make(chan string)
+				go logMessages(uc)
 				ProcessImg(f.Name(),Picture{},user,CONF,uc)
+
+			}else{
+				fmt.Println("unable to proces " + f.Name())
 			}
 			c <- 1
 		}
@@ -65,10 +69,17 @@ func ProcessPhotoDir(dir, user string) {
 
 }
 
+func logMessages (messages chan string ){
+	for m:=range messages{
+		fmt.Println(" message update " + m)
+	}
+}
+
 func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateChanel chan string) {
 	msg:=CreateMessage("starting processing img ","pending")
 	fmt.Println("made message " + msg)
 	updateChanel <- msg
+	fmt.Println("after message")
 	defer close(updateChanel)
 	reader := exif.New()
 	path := conf.GetPhotoDir() + "/" + fileName
@@ -83,6 +94,7 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateC
 
 
 	tags := reader.Tags
+	fmt.Println("reading tags ")
 	var lonLat []float64
 
 	err = validateLonLat(tags);
