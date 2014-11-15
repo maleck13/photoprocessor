@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"fmt"
 )
 
 var (
@@ -21,10 +22,10 @@ func InitLogger(
     ) {
 
 	f,e := os.OpenFile(LOG_FILE,os.O_RDWR|os.O_CREATE|os.O_APPEND,0666)
-	//ef,e := os.OpenFile(ERROR_LOG,os.O_RDWR|os.O_CREATE|os.O_APPEND,0666)
-	//os.Create(LOG_FILE)
-	//os.OpenFile(LOG_FILE,os.O_RDWR|os.O_CREATE|os.O_APPEND,0666)
+	ef,e := os.OpenFile(ERROR_LOG,os.O_RDWR|os.O_CREATE|os.O_APPEND,0666)
+
 	if e !=nil{
+		fmt.Printf("error opening log files " + e.Error())
 		panic(e)
 	}
 
@@ -40,7 +41,7 @@ func InitLogger(
 		"WARNING: ",
 				log.Ldate|log.Ltime|log.Lshortfile)
 
-	ErrorLog = log.New(os.Stdout,
+	ErrorLog = log.New(ef,
 		"ERROR: ",
 				log.Ldate|log.Ltime|log.Lshortfile)
 
