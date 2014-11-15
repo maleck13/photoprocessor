@@ -15,6 +15,7 @@ type CONFIG struct {
 	DefaultLonLat []float64
 	DefaultUser string
 	Rabbiturl string
+	Dbname string
 }
 
 const (
@@ -78,4 +79,7 @@ func (c * CONFIG)GetDefaultUser()string{
 
 func (c * CONFIG)GetRabbitURL()string{
 	return c.Rabbiturl;
+}
+func (c * CONFIG)GetDbName()string {
+	return c.Dbname;
 }

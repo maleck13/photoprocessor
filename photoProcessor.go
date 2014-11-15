@@ -79,7 +79,6 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateC
 	msg:=CreateMessage("starting processing img ","pending")
 	fmt.Println("made message " + msg)
 	updateChanel <- msg
-	fmt.Println("after message")
 	defer close(updateChanel)
 	reader := exif.New()
 	path := conf.GetPhotoDir() + "/" + fileName
@@ -94,7 +93,6 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateC
 
 
 	tags := reader.Tags
-	fmt.Println("reading tags ")
 	var lonLat []float64
 
 	err = validateLonLat(tags);

@@ -44,7 +44,7 @@ func getDBSession() *mgo.Session{
 func (pic * Picture) Save() error{
 	session := getDBSession();
 	defer session.Close()
-	c := session.DB(DB_NAME).C(PIC_COLLECTION)
+	c := session.DB(CONF.GetDbName()).C(PIC_COLLECTION)
 	err := c.Insert(pic)
 	if err != nil {
 		ErrorLog.Println(err.Error())
@@ -57,7 +57,7 @@ func (pic * Picture) Save() error{
 func FindByName(name string) (error,Picture){
 	session := getDBSession();
 	defer session.Close()
-	c := session.DB(DB_NAME).C(PIC_COLLECTION)
+	c := session.DB(CONF.GetDbName()).C(PIC_COLLECTION)
 	result := Picture{}
 	err := c.Find(bson.M{"name": name}).One(&result)
 	return err,result
