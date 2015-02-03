@@ -30,7 +30,6 @@ type Persister interface {
 }
 
 func ProcessPhotoDir(dir, user string) {
-
 	fInfo, err := ioutil.ReadDir(dir)
 	FailOnError(err, " Error reading dir:")
 
@@ -45,7 +44,7 @@ func ProcessPhotoDir(dir, user string) {
 				ProcessImg(f.Name(),Picture{},user,CONF,uc)
 
 			}else{
-				fmt.Println("unable to proces " + f.Name())
+				fmt.Println("	unable to proces " + f.Name())
 			}
 			c <- 1
 		}
@@ -81,12 +80,17 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateC
 	updateChanel <- msg
 	defer close(updateChanel)
 	reader := exif.New()
-	path := conf.GetPhotoDir() + "/" + fileName
-	completedPath := conf.GetProcessedPhotoDir() + "/" + fileName
+	path := conf.GetPhotoDir() + "/" + user + "/" +fileName
+	completedPath := conf.GetPhotoDir() + "/" + user +"/completed/"+ fileName
+
+
+	fmt.Println("Path to img " + path);
+	fmt.Println("completed path " + completedPath);
+
 	err := reader.Open(path)
 	LogOnError(err, "Error reading data from "+path)
 	if nil != err{
-		msg =CreateMessage("Error reading data from "+path,"error")
+		msg =CreateMessage("Error reading data from "+path + " " + err.Error(),"error")
 		updateChanel<-msg
 		return;
 	}
@@ -121,7 +125,7 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateC
 	pic.LonLat = lonLat
 	pic.Name = fileName
 	pic.Path = completedPath
-	thumb, err := createThumb(path, fileName, conf)
+	thumb, err := createThumb(path, fileName, user, conf)
 
 	msg =CreateMessage("Thumbnail created  ","pending")
 	updateChanel<-msg
@@ -139,14 +143,15 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateC
 	pic.TimeStamp = date.Unix()
 	InfoLog.Println(pic);
 	err = pic.Save()
-	msg =CreateMessage("Saved to db ","pending")
+	msg =CreateMessage("Saved to db ","complete")
 	updateChanel<-msg
 	if err != nil {
+		msg =CreateMessage("failed Save to db ","pending")
 		LogOnError(err, "failed to save picture")
 		//move to failed dir
 	}
 
-	err = copyAndRemove(fileName, conf)
+	err = copyAndRemove(fileName, user, conf)
 	if err != nil {
 		FailOnError(err, "failed to save picture")
 	}
@@ -178,9 +183,9 @@ func ReadExifData (filePath string)(map[string]string,error){
 
 
 
-func copyAndRemove (fileName string, conf * CONFIG) error{
-	path := conf.GetPhotoDir() + "/" + fileName
-	completedPath := CONF.GetProcessedPhotoDir() + "/" +  fileName
+func copyAndRemove (fileName string, user string, conf * CONFIG) error{
+	path := conf.GetPhotoDir() + "/" + user + "/" + fileName
+	completedPath := CONF.GetPhotoDir() + "/" +user + "/"+  fileName
 
 	dir,err := os.Stat(CONF.GetPhotoDir())
 	if err != nil {
@@ -189,16 +194,6 @@ func copyAndRemove (fileName string, conf * CONFIG) error{
 
 	if dir.IsDir() == false{
 		return errors.New("photo dir is not a dir ")
-	}
-
-	dir,err = os.Stat(conf.GetProcessedPhotoDir())
-
-	if err != nil {
-		return err
-	}
-
-	if dir.IsDir() == false{
-		return errors.New(" completed photo dir is not a dir ")
 	}
 
 
@@ -312,10 +307,14 @@ func executor(jobs [] Worker, con int) {
 
 
 
-func createThumb(filepath string, filename string, conf * CONFIG) (string, error) {
+func createThumb(filepath string, filename string, user string, conf * CONFIG) (string, error) {
 	// open "test.jpg"
 	InfoLog.Println("opening " + filepath)
 	file, err := os.Open(filepath)
+	thumbPath := conf.GetPhotoDir() + "/" + user + "/thumbs/"+ filename
+
+	fmt.Println("thumbpath is " + thumbPath);
+
 	LogOnError(err, "failed to open img "+filepath)
 
 	// decode jpeg into image.Image
@@ -330,20 +329,20 @@ func createThumb(filepath string, filename string, conf * CONFIG) (string, error
 	// resize to width 1000 using Lanczos resampling
 	// and preserve aspect ratio
 	var percentHeight,percentWidth uint
-	percentHeight = uint((img.Bounds().Max.Y / 100) * 15);
-	percentWidth = uint((img.Bounds().Max.X / 100) * 15);
+	percentHeight = uint((img.Bounds().Max.Y / 100) * 20);
+	percentWidth = uint((img.Bounds().Max.X / 100) * 20);
 	//bit arbitary
-	if percentHeight < 300{
-		percentHeight = 300;
-	}
-
-	if percentWidth < 300{
-		percentWidth = 300;
-	}
+//	if percentHeight < 300{
+//		percentHeight = 300;
+//	}
+//
+//	if percentWidth < 300{
+//		percentWidth = 300;
+//	}
 
 
 	m :=resize.Thumbnail(percentWidth,percentHeight,img,resize.Bicubic)
-	thumbPath := conf.GetThumbNailDir() + "/" + filename
+
 	out, err := os.Create(thumbPath)
 
 	LogOnError(err, "failed to write out thumbnail "+thumbPath)

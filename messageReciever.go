@@ -14,22 +14,60 @@ type Message struct {
 	File string
 	User string
 	RESKEY string
-}
+	Name string
+	}
+
+
+
 
 type AmqpCon struct {
 	CONNECTION *amqp.Connection
 }
 
+func connect()(* amqp.Connection,error){
 
-
-
-func StartConsuming() {
-	fmt.Println("start consuming")
 	conn, err := amqp.Dial(CONF.GetRabbitURL())
+	//connClos <- amqp.ErrClosed
+	return conn,err;
+}
 
-	FailOnError(err, "Failed to connect to RabbitMQ")
+
+func connectionListener(connErr chan * amqp.Error, stopChan chan bool){
+	ErrorLog.Println("Started connection Listener");
+	errMess:= <-connErr;
+	if errMess.Code == amqp.FrameError || errMess.Code == amqp.ChannelError {
+		fmt.Println("recieed amqp error trying reconnect", errMess);
+		close(stopChan)
+
+		var conn * amqp.Connection;
+		var err error;
+		for{
+			fmt.Println("Trying to reconnect");
+			conn,err = connect();
+			if err != nil {
+				fmt.Println(" failed to connect " + err.Error())
+				time.Sleep(2000)
+			}else{
+				break
+			}
+
+		}
+		startConsuming(conn);
+
+
+	}
+
+}
+
+func StartUp(){
+	conn, err := connect()
+	FailOnError(err,"failed to connect");
+	startConsuming(conn)
+}
+
+func startConsuming(conn * amqp.Connection ) {
+
 	defer conn.Close()
-
 	ch, err := conn.Channel()
 	FailOnError(err, "Failed to open a channel")
 	defer ch.Close()
@@ -82,7 +120,7 @@ func StartConsuming() {
 			fmt.Printf("%s \n", m.File)
 			updates:= make(chan string)
 			go UpdateJob(conn,m.RESKEY,updates)
-			go ProcessImg(m.File,Picture{},m.User,CONF, updates)
+			go ProcessImg(m.Name,Picture{},m.User,CONF, updates)
 			fmt.Printf("finished with file %s \n", m.File)
 
 			d.Ack(true)
@@ -91,32 +129,33 @@ func StartConsuming() {
 
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 	//casues the thread to block
+	connClos:= make(chan *amqp.Error)
+	conn.NotifyClose(connClos)
+	connectionListener(connClos,forever);
 	<-forever
+
+	fmt.Println("stopping listening ");
 }
 
-
-func setUpResponseExchange(connection * amqp.Connection) (*amqp.Channel,error){
-	channel, err := connection.Channel()
-	if err != nil {
-		return nil,fmt.Errorf("Channel: %s", err)
-	}
-
-	return channel,err
-
-}
 
 func UpdateJob(conn * amqp.Connection, resKey string, messages chan string ){
-	channel,err:= setUpResponseExchange(conn)
-	FailOnError(err, "Failed to open a channel")
-	defer channel.Close()
-	_,err =channel.QueueDeclare(resKey,false, false, false, false, amqp.Table{})
-	if err != nil{
+	channel, err := conn.Channel()
+	if err != nil {
+		FailOnError(err, "Failed to open a channel")
+	}
 
+	defer channel.Close()
+
+
+
+
+	if err != nil{
+		FailOnError(err, "failed to declare que ");
 	}
 
 	for m:= range messages{
 
-		fmt.Println("message ready " + m)
+		fmt.Println("message ready " + m + "publishing to " + resKey)
 
 		if err:= channel.Publish(
 			"",   // publish to an exchange
@@ -134,15 +173,6 @@ func UpdateJob(conn * amqp.Connection, resKey string, messages chan string ){
 		}
 
 	}
-
-	fmt.Println("finished recieving message updated giving an extra 5 mins before removing que");
-		//already in go routine so should be ok
-		time.Sleep(time.Minute * 5)
-		fmt.Println("deleting q")
-		_, err = channel.QueueDelete(resKey, false, true, false);
-		if err != nil{
-			fmt.Println("deleting q err " + err.Error() )
-		}
 }
 
 type UPDATE_MESSAGE struct {
