@@ -11,7 +11,7 @@ import (
 	"image/jpeg"
 	"github.com/nfnt/resize"
 	"time"
-	"io"
+
 )
 
 const (
@@ -75,11 +75,14 @@ func logMessages (messages chan string ){
 }
 
 func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateChanel chan string) {
+
 	msg:=CreateMessage("starting processing img ","pending")
 	fmt.Println("made message " + msg)
 	updateChanel <- msg
 	defer close(updateChanel)
+
 	reader := exif.New()
+
 	path := conf.GetPhotoDir() + "/" + user + "/" +fileName
 	completedPath := conf.GetPhotoDir() + "/" + user +"/completed/"+ fileName
 
@@ -127,7 +130,7 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateC
 	pic.Path = completedPath
 	thumb, err := createThumb(path, fileName, user, conf)
 
-	msg =CreateMessage("Thumbnail created  ","pending")
+	msg =CreateMessage("Thumbnail created  " + thumb,"pending")
 	updateChanel<-msg
 
 	date := parseDate(tags[DATE_TIME_KEY])
@@ -150,10 +153,11 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateC
 		LogOnError(err, "failed to save picture")
 		//move to failed dir
 	}
-
-	err = copyAndRemove(fileName, user, conf)
-	if err != nil {
-		FailOnError(err, "failed to save picture")
+	if ! CONF.getAwsEnabled() {
+		err = removeOriginal(fileName, user, conf)
+		if err != nil {
+			FailOnError(err, "failed to save picture")
+		}
 	}
 
 
@@ -183,43 +187,48 @@ func ReadExifData (filePath string)(map[string]string,error){
 
 
 
-func copyAndRemove (fileName string, user string, conf * CONFIG) error{
+func removeOriginal (fileName string, user string, conf * CONFIG) error{
 	path := conf.GetPhotoDir() + "/" + user + "/" + fileName
-	completedPath := CONF.GetPhotoDir() + "/" +user + "/"+  fileName
-
-	dir,err := os.Stat(CONF.GetPhotoDir())
-	if err != nil {
-		return err
-	}
-
-	if dir.IsDir() == false{
-		return errors.New("photo dir is not a dir ")
-	}
-
-
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-
-	defer f.Close()
-
-
-	fc, err := os.Create(completedPath)
-	if err != nil {
-		return err
-	}
-	defer fc.Close()
-
-	_, err = io.Copy(fc, f)
-
-	if err != nil {
-		return err
-	}
-
-	err = os.Remove(path)
-
-	return err
+	err := os.Remove(path)
+	return err;
+//	completedPath := CONF.GetPhotoDir() + "/" +user + "/"+  fileName
+//
+//	dir,err := os.Stat(CONF.GetPhotoDir())
+//	if err != nil {
+//		return err
+//	}
+//
+//	if dir.IsDir() == false{
+//		return errors.New("photo dir is not a dir ")
+//	}
+//
+//
+//	f, err := os.Open(path)
+//	if err != nil {
+//		return err
+//	}
+//
+//	defer f.Close()
+//
+//
+//	fc, err := os.Create(completedPath)
+//	if err != nil {
+//		return err
+//	}
+//	defer fc.Close()
+//
+//	_, err = io.Copy(fc, f)
+//
+//
+//	if err != nil {
+//		return err
+//	}
+//
+//
+//
+//
+//
+//	return err
 }
 
 func validateLonLat(info map[string]string) error {
@@ -329,16 +338,16 @@ func createThumb(filepath string, filename string, user string, conf * CONFIG) (
 	// resize to width 1000 using Lanczos resampling
 	// and preserve aspect ratio
 	var percentHeight,percentWidth uint
-	percentHeight = uint((img.Bounds().Max.Y / 100) * 20);
-	percentWidth = uint((img.Bounds().Max.X / 100) * 20);
+	percentHeight = uint((img.Bounds().Max.Y / 100) * 15);
+	percentWidth = uint((img.Bounds().Max.X / 100) * 15);
 	//bit arbitary
-//	if percentHeight < 300{
-//		percentHeight = 300;
-//	}
-//
-//	if percentWidth < 300{
-//		percentWidth = 300;
-//	}
+	if percentHeight < 150{
+		percentHeight = 150;
+	}
+
+	if percentWidth < 150{
+		percentWidth = 150;
+	}
 
 
 	m :=resize.Thumbnail(percentWidth,percentHeight,img,resize.Bicubic)
@@ -352,6 +361,13 @@ func createThumb(filepath string, filename string, user string, conf * CONFIG) (
 
 	// write new image to file
 	jpeg.Encode(out, m, nil)
+	if CONF.getAwsEnabled(){
+		InfoLog.Println(" AWS ENABLED *** addding thub to aws *** ")
+		thumbPath, err = PutInBucket(thumbPath,"/" + user + "/thumbs/"+ filename)
+		if nil != err{
+			ErrorLog.Println(" failed to add to aws " + err.Error())
+		}
+	}
 	return thumbPath, err
 }
 

@@ -16,6 +16,10 @@ type CONFIG struct {
 	DefaultUser string
 	Rabbiturl string
 	Dbname string
+	AwsAccessKey string
+	AwsSecretKey string
+	AwsEnabled bool
+	AwsLocation string
 }
 
 const (
@@ -82,4 +86,20 @@ func (c * CONFIG)GetRabbitURL()string{
 }
 func (c * CONFIG)GetDbName()string {
 	return c.Dbname;
+}
+
+func (c * CONFIG) getAwsSecretKey()string{
+	return c.AwsSecretKey
+}
+
+func (c * CONFIG) getAwsAccessKey()string{
+	return c.AwsAccessKey
+}
+
+func (c * CONFIG) getAwsEnabled()bool{
+	return c.AwsEnabled
+}
+
+func (c * CONFIG) getAwsLocation () string{
+	return c.AwsLocation
 }
