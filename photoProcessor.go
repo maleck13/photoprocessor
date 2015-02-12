@@ -153,12 +153,12 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateC
 		LogOnError(err, "failed to save picture")
 		//move to failed dir
 	}
-	if ! CONF.getAwsEnabled() {
-		err = removeOriginal(fileName, user, conf)
-		if err != nil {
-			FailOnError(err, "failed to save picture")
-		}
+
+	err = removeOriginal(fileName, user, conf)
+	if err != nil {
+		FailOnError(err, "failed to save picture")
 	}
+
 
 
 
