@@ -41,7 +41,7 @@ func ProcessPhotoDir(dir, user string) {
 				fmt.Println("processing " + f.Name())
 				uc:=make(chan string)
 				go logMessages(uc)
-				ProcessImg(f.Name(),Picture{},user,CONF,uc)
+				ProcessImg(f.Name(),Picture{},user,CONF,uc,"internal")
 
 			}else{
 				fmt.Println("	unable to proces " + f.Name())
@@ -74,9 +74,9 @@ func logMessages (messages chan string ){
 	}
 }
 
-func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateChanel chan string) {
+func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateChanel chan string, jobId string) {
 
-	msg:=CreateMessage("starting processing img ","pending")
+	msg:=CreateMessage("starting processing img ","pending",jobId)
 	fmt.Println("made message " + msg)
 	updateChanel <- msg
 	defer close(updateChanel)
@@ -93,7 +93,7 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateC
 	err := reader.Open(path)
 	LogOnError(err, "Error reading data from "+path)
 	if nil != err{
-		msg =CreateMessage("Error reading data from "+path + " " + err.Error(),"error")
+		msg =CreateMessage("Error reading data from "+path + " " + err.Error(),"error",jobId)
 		updateChanel<-msg
 		return;
 	}
@@ -118,7 +118,7 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateC
 
 	err = validateTime(tags);
 	if err != nil {
-		msg =CreateMessage("Error no time exif data ","error")
+		msg =CreateMessage("Error no time exif data ","error",jobId)
 		updateChanel<-msg
 		LogOnError(err, "missing data")
 		return
@@ -130,7 +130,7 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateC
 	pic.Path = completedPath
 	thumb, err := createThumb(path, fileName, user, conf)
 
-	msg =CreateMessage("Thumbnail created  " + thumb,"pending")
+	msg =CreateMessage("Thumbnail created  " + thumb,"pending",jobId)
 	updateChanel<-msg
 
 	date := parseDate(tags[DATE_TIME_KEY])
@@ -146,10 +146,10 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateC
 	pic.TimeStamp = date.Unix()
 	InfoLog.Println(pic);
 	err = pic.Save()
-	msg =CreateMessage("Saved to db ","complete")
+	msg =CreateMessage("Saved to db ","complete",jobId)
 	updateChanel<-msg
 	if err != nil {
-		msg =CreateMessage("failed Save to db ","pending")
+		msg =CreateMessage("failed Save to db ","pending",jobId)
 		LogOnError(err, "failed to save picture")
 		//move to failed dir
 	}

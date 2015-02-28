@@ -120,7 +120,7 @@ func startConsuming(conn * amqp.Connection ) {
 			fmt.Printf("%s \n", m.File)
 			updates:= make(chan string)
 			go UpdateJob(conn,m.RESKEY,updates)
-			go ProcessImg(m.Name,Picture{},m.User,CONF, updates)
+			go ProcessImg(m.Name,Picture{},m.User,CONF, updates,m.RESKEY)
 			fmt.Printf("finished with file %s \n", m.File)
 
 			d.Ack(true)
@@ -157,9 +157,11 @@ func UpdateJob(conn * amqp.Connection, resKey string, messages chan string ){
 
 		fmt.Println("message ready " + m + "publishing to " + resKey)
 
+
+
 		if err:= channel.Publish(
-			"",   // publish to an exchange
-			resKey , // routing to 0 or more queues
+			"amq.topic",   // publish to an exchange
+			"picjob.update." + resKey , // routing to 0 or more queues
 			false,      // mandatory
 			false,      // immediate
 			amqp.Publishing{
@@ -178,10 +180,12 @@ func UpdateJob(conn * amqp.Connection, resKey string, messages chan string ){
 type UPDATE_MESSAGE struct {
 	Message string
 	Status string
+	Jobid string
+	Type string
 }
 
-func CreateMessage(message,status string)string{
-	msg:=UPDATE_MESSAGE{message,status}
+func CreateMessage(message,status, jobid string)string{
+	msg:=UPDATE_MESSAGE{message,status,jobid,"PICTURE"}
 	json,err:=json.Marshal(msg)
 	if err !=nil{
 		fmt.Println("error " + err.Error())
