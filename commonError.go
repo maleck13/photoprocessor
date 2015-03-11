@@ -9,8 +9,8 @@ func FailOnError(err error, msg string) {
 	}
 }
 
-func LogOnError(err error, msg string){
-	if err !=nil{
+func LogOnError(err error, msg string) {
+	if err != nil {
 		ErrorLog.Println(err, msg)
 	}
 }

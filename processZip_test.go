@@ -1,8 +1,8 @@
 package main
 
 import (
-	"testing"
 	"os"
+	"testing"
 )
 
 func TestProcessZip(t *testing.T) {
@@ -12,14 +12,14 @@ func TestProcessZip(t *testing.T) {
 
 	os.RemoveAll(dataDir + "/" + user)
 
-	loc,err := ProcessZip(dataDir,zipPath, user)
+	loc, err := ProcessZip(dataDir, zipPath, user)
 
-	if nil != err{
+	if nil != err {
 		t.Errorf(" error in process zip %s ", err)
 	}
 
 	if loc == "" {
-		t.Errorf(" error no file path returned ");
+		t.Errorf(" error no file path returned ")
 	}
 
 	os.RemoveAll(dataDir + "/" + user)

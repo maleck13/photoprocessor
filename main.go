@@ -4,6 +4,6 @@ func main() {
 
 	InitLogger()
 	LoadConfig()
- 	StartUp();
+	StartUp()
 
 }

@@ -2,63 +2,57 @@ package main
 
 import (
 	"fmt"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"time"
-	"gopkg.in/mgo.v2"
 )
 
 type Picture struct {
-	Name string
-	Path string
-	Thumb string
-	LonLat []float64
-	Time time.Time
+	Name      string
+	Path      string
+	Thumb     string
+	LonLat    []float64
+	Time      time.Time
 	TimeStamp int64
-	User string
-	Year string
+	User      string
+	Year      string
 }
 
 const (
-	DB_NAME = "photomap"
+	DB_NAME        = "photomap"
 	PIC_COLLECTION = "pictures"
 )
 
-
-func getDBSession() *mgo.Session{
+func getDBSession() *mgo.Session {
 	fmt.Println("get db session")
 	session, err := mgo.Dial(CONF.GetMongoHost())
 	if err != nil {
 		panic(err)
 	}
 
-
 	// Optional. Switch the session to a monotonic behavior.
 	session.SetMode(mgo.Monotonic, true)
-	return session;
+	return session
 
 }
 
-
-
-
-func (pic * Picture) Save() error{
-	session := getDBSession();
+func (pic *Picture) Save() error {
+	session := getDBSession()
 	defer session.Close()
 	c := session.DB(CONF.GetDbName()).C(PIC_COLLECTION)
 	err := c.Insert(pic)
 	if err != nil {
 		ErrorLog.Println(err.Error())
-		return err;
+		return err
 	}
-	return nil;
+	return nil
 }
 
-
-func FindByName(name string) (error,Picture){
-	session := getDBSession();
+func FindByName(name string) (error, Picture) {
+	session := getDBSession()
 	defer session.Close()
 	c := session.DB(CONF.GetDbName()).C(PIC_COLLECTION)
 	result := Picture{}
 	err := c.Find(bson.M{"name": name}).One(&result)
-	return err,result
+	return err, result
 }

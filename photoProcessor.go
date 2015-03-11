@@ -1,21 +1,21 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"github.com/disintegration/imaging"
 	"github.com/gosexy/exif"
+	"image"
+	"image/jpeg"
+	"io"
 	"io/ioutil"
-	"strings"
 	"os"
 	"strconv"
-	"errors"
-	"image/jpeg"
-	"github.com/nfnt/resize"
+	"strings"
 	"time"
-
 )
 
 const (
-
 	EAST_OR_WEST_LON   = "East or West Longitude"
 	NORTH_OR_SOUTH_LAT = "North or South Latitude"
 	DATE_TIME_KEY      = "Date and Time (Original)"
@@ -26,7 +26,7 @@ const (
 type Worker func(chan int)
 
 type Persister interface {
-	Save()error
+	Save() error
 }
 
 func ProcessPhotoDir(dir, user string) {
@@ -39,11 +39,11 @@ func ProcessPhotoDir(dir, user string) {
 
 			if !f.IsDir() && strings.Contains(f.Name(), ".JPG") {
 				fmt.Println("processing " + f.Name())
-				uc:=make(chan string)
+				uc := make(chan string)
 				go logMessages(uc)
-				ProcessImg(f.Name(),Picture{},user,CONF,uc,"internal")
+				ProcessImg(f.Name(), Picture{}, user, CONF, uc, "internal")
 
-			}else{
+			} else {
 				fmt.Println("	unable to proces " + f.Name())
 			}
 			c <- 1
@@ -61,95 +61,95 @@ func ProcessPhotoDir(dir, user string) {
 
 	//execute the jobs ten at a time in a go routine
 	if len(jobs) > 0 {
-	 go executor(jobs, CONF.GetConcurrentJobs())
-	}else{
+		go executor(jobs, CONF.GetConcurrentJobs())
+	} else {
 		InfoLog.Println("no files found in dir")
 	}
 
 }
 
-func logMessages (messages chan string ){
-	for m:=range messages{
+func logMessages(messages chan string) {
+	for m := range messages {
 		fmt.Println(" message update " + m)
 	}
 }
 
 func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateChanel chan string, jobId string) {
 
-	msg:=CreateMessage("starting processing img ","pending",jobId)
+	msg := CreateMessage("starting processing img ", "pending", jobId)
 	fmt.Println("made message " + msg)
 	updateChanel <- msg
 	defer close(updateChanel)
 
 	reader := exif.New()
 
-	path := conf.GetPhotoDir() + "/" + user + "/" +fileName
-	completedPath := conf.GetPhotoDir() + "/" + user +"/completed/"+ fileName
+	path := conf.GetPhotoDir() + "/" + user + "/" + fileName
+	completedPath := conf.GetPhotoDir() + "/" + user + "/completed/" + fileName
 
-
-	fmt.Println("Path to img " + path);
-	fmt.Println("completed path " + completedPath);
+	fmt.Println("Path to img " + path)
+	fmt.Println("completed path " + completedPath)
 
 	err := reader.Open(path)
 	LogOnError(err, "Error reading data from "+path)
-	if nil != err{
-		msg =CreateMessage("Error reading data from "+path + " " + err.Error(),"error",jobId)
-		updateChanel<-msg
-		return;
+	if nil != err {
+		msg = CreateMessage("Error reading data from "+path+" "+err.Error(), "error", jobId)
+		updateChanel <- msg
+		return
 	}
 
-
 	tags := reader.Tags
+
+	for key, value := range tags {
+		fmt.Println("Key:", key, "Value:", value)
+	}
+
 	var lonLat []float64
 
-	err = validateLonLat(tags);
+	err = validateLonLat(tags)
 
 	if err != nil {
-		if conf.GetUseDefaultLonLat(){
+		if conf.GetUseDefaultLonLat() {
 			InfoLog.Println("using default lon lat ")
 			lonLat = conf.GetDefaultLonLat()
-		}else {
+		} else {
 			LogOnError(err, "missing data")
 			return
 		}
-	}else {
+	} else {
 		lonLat = convertDegToDec(tags[LATITUDE], tags[NORTH_OR_SOUTH_LAT], tags[LONGITUDE], tags[EAST_OR_WEST_LON])
 	}
 
-	err = validateTime(tags);
+	err = validateTime(tags)
 	if err != nil {
-		msg =CreateMessage("Error no time exif data ","error",jobId)
-		updateChanel<-msg
+		msg = CreateMessage("Error no time exif data ", "error", jobId)
+		updateChanel <- msg
 		LogOnError(err, "missing data")
 		return
 	}
 
-
 	pic.LonLat = lonLat
 	pic.Name = fileName
 	pic.Path = completedPath
-	thumb, err := createThumb(path, fileName, user, conf)
-
-	msg =CreateMessage("Thumbnail created  " + thumb,"pending",jobId)
-	updateChanel<-msg
+	thumb, err := createThumb(path, fileName, user,tags, conf)
+	if err != nil {
+		LogOnError(err, "failed to create thumb ignoring img "+fileName)
+	}
+	msg = CreateMessage("Thumbnail created  "+thumb, "pending", jobId)
+	updateChanel <- msg
 
 	date := parseDate(tags[DATE_TIME_KEY])
 
-	if err != nil {
-		LogOnError(err, "failed to create thumb ignoring img "+fileName)
-		return
-	}
 	pic.Thumb = thumb
 	pic.Time = date
 	pic.Year = date.String()[0:4]
 	pic.User = user
 	pic.TimeStamp = date.Unix()
-	InfoLog.Println(pic);
+	InfoLog.Println(pic)
 	err = pic.Save()
-	msg =CreateMessage("Saved to db ","complete",jobId)
-	updateChanel<-msg
+	msg = CreateMessage("Saved to db ", "complete", jobId)
+	updateChanel <- msg
 	if err != nil {
-		msg =CreateMessage("failed Save to db ","pending",jobId)
+		msg = CreateMessage("failed Save to db ", "pending", jobId)
 		LogOnError(err, "failed to save picture")
 		//move to failed dir
 	}
@@ -159,76 +159,69 @@ func ProcessImg(fileName string, pic Picture, user string, conf *CONFIG, updateC
 		FailOnError(err, "failed to save picture")
 	}
 
-
-
-
 }
 
-func ReadExifData (filePath string)(map[string]string,error){
+func ReadExifData(filePath string) (map[string]string, error) {
 	reader := exif.New()
-	_,err:=os.Stat(filePath)
-	if nil != err{
-		return nil,err;
+	_, err := os.Stat(filePath)
+	if nil != err {
+		return nil, err
 	}
-
-
 
 	err = reader.Open(filePath)
 	//LogOnError(err, "failed to open "+filePath)
-	if nil != err{
-		return nil,err;
+	if nil != err {
+		return nil, err
 	}
-
 
 	tags := reader.Tags
 
-	return tags,nil;
+	return tags, nil
 }
 
-
-
-func removeOriginal (fileName string, user string, conf * CONFIG) error{
-	path := conf.GetPhotoDir() + "/" + user + "/" + fileName
-	err := os.Remove(path)
-	return err;
-//	completedPath := CONF.GetPhotoDir() + "/" +user + "/"+  fileName
-//
-//	dir,err := os.Stat(CONF.GetPhotoDir())
-//	if err != nil {
-//		return err
-//	}
-//
-//	if dir.IsDir() == false{
-//		return errors.New("photo dir is not a dir ")
-//	}
-//
-//
-//	f, err := os.Open(path)
-//	if err != nil {
-//		return err
-//	}
-//
-//	defer f.Close()
-//
-//
-//	fc, err := os.Create(completedPath)
-//	if err != nil {
-//		return err
-//	}
-//	defer fc.Close()
-//
-//	_, err = io.Copy(fc, f)
-//
-//
-//	if err != nil {
-//		return err
-//	}
-//
-//
-//
-//
-//
-//	return err
+func removeOriginal(fileName string, user string, conf *CONFIG) error {
+	return nil
+	//	path := conf.GetPhotoDir() + "/" + user + "/" + fileName
+	//	err := os.Remove(path)
+	//	return err;
+	//	completedPath := CONF.GetPhotoDir() + "/" +user + "/"+  fileName
+	//
+	//	dir,err := os.Stat(CONF.GetPhotoDir())
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	if dir.IsDir() == false{
+	//		return errors.New("photo dir is not a dir ")
+	//	}
+	//
+	//
+	//	f, err := os.Open(path)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	defer f.Close()
+	//
+	//
+	//	fc, err := os.Create(completedPath)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	defer fc.Close()
+	//
+	//	_, err = io.Copy(fc, f)
+	//
+	//
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//
+	//
+	//
+	//
+	//	return err
 }
 
 func validateLonLat(info map[string]string) error {
@@ -265,7 +258,7 @@ func convertDegToDec(latDeg string, latFlag string, lonDeg string, lonFlag strin
 	latDec := val1 + (val2 / 60) + (val3 / 3600)
 
 	if "N" != latFlag && "E" != latFlag {
-		latDec = latDec*-1
+		latDec = latDec * -1
 	}
 
 	bits = strings.Split(lonDeg, ",")
@@ -275,7 +268,7 @@ func convertDegToDec(latDeg string, latFlag string, lonDeg string, lonFlag strin
 	val3, _ = strconv.ParseFloat(strings.TrimSpace(bits[2]), 64)
 	lonDec := val1 + (val2 / 60) + (val3 / 3600)
 	if "S" == lonFlag || "W" == lonFlag {
-		lonDec = lonDec*-1
+		lonDec = lonDec * -1
 	}
 
 	retFloat[0] = lonDec
@@ -285,27 +278,25 @@ func convertDegToDec(latDeg string, latFlag string, lonDeg string, lonFlag strin
 
 }
 
-
-func executor(jobs [] Worker, con int) {
-	c := make(chan int);
+func executor(jobs []Worker, con int) {
+	c := make(chan int)
 	l := len(jobs)
 	if l < con {
 		for _, w := range jobs {
-			go w(c);
+			go w(c)
 		}
-	}else {
+	} else {
 		s := jobs[:con]
 		for _, w := range s {
-			go w(c);
+			go w(c)
 		}
 
-		done := con;
-
+		done := con
 
 		for {
-			done-= <-c
+			done -= <-c
 			if done == 0 {
-				break;
+				break
 			}
 		}
 
@@ -314,43 +305,79 @@ func executor(jobs [] Worker, con int) {
 
 }
 
-
-
-func createThumb(filepath string, filename string, user string, conf * CONFIG) (string, error) {
+func createThumb(filepath string, filename string, user string, exif map[string]string,conf *CONFIG) (string, error) {
 	// open "test.jpg"
 	InfoLog.Println("opening " + filepath)
 	file, err := os.Open(filepath)
-	thumbPath := conf.GetPhotoDir() + "/" + user + "/thumbs/"+ filename
+	if err != nil {
+		LogOnError(err, "failed to open filepath "+filepath)
+	}
+	defer file.Close()
+	thumbPath := conf.GetPhotoDir() + "/" + user + "/thumbs/" + filename
 
-	fmt.Println("thumbpath is " + thumbPath);
+	fmt.Println("thumbpath is " + thumbPath)
 
 	LogOnError(err, "failed to open img "+filepath)
 
 	// decode jpeg into image.Image
-	img, err := jpeg.Decode(file)
-
+	img, _, err := image.Decode(file)
 
 	if err != nil {
+		// just move the img to thumbs
+		file, err := os.Open(filepath)
+		if err != nil {
+			return "", err
+		}
+		defer file.Close()
 		LogOnError(err, "failed decode")
-		return "", err
+		InfoLog.Println(" error decoding copying file")
+		fc, err := os.Create(thumbPath)
+		if err != nil {
+			return "", err
+		}
+		InfoLog.Println(" created new path " + thumbPath)
+		defer fc.Close()
+
+		_, err = io.Copy(fc, file)
+
+		if err != nil {
+			// just move the img to thumbs
+			LogOnError(err, "failed to copy file")
+		}
+
+		if CONF.getAwsEnabled() {
+			InfoLog.Println(" AWS ENABLED *** addding thub to aws *** ")
+			thumbPath, err = PutInBucket(thumbPath, "/"+user+"/thumbs/"+filename)
+			if nil != err {
+				ErrorLog.Println(" failed to add to aws " + err.Error())
+			}
+		}
+
+		return thumbPath, err
 	}
-	defer file.Close()
+
 	// resize to width 1000 using Lanczos resampling
 	// and preserve aspect ratio
-	var percentHeight,percentWidth uint
-	percentHeight = uint((img.Bounds().Max.Y / 100) * 15);
-	percentWidth = uint((img.Bounds().Max.X / 100) * 15);
+	var percentHeight, percentWidth int
+	percentHeight = int((img.Bounds().Max.Y / 100) * 15)
+	percentWidth = int((img.Bounds().Max.X / 100) * 15)
 	//bit arbitary
-	if percentHeight < 150{
-		percentHeight = 150;
+	if percentHeight < 150 {
+		percentHeight = 150
 	}
 
-	if percentWidth < 150{
-		percentWidth = 150;
+	if percentWidth < 150 {
+		percentWidth = 150
+	}
+
+	orientate := exif["Orientation"]
+	if "Right-top" == orientate{
+		InfoLog.Println("rotating img 270 degrees");
+		img=imaging.Rotate270(img)
 	}
 
 
-	m :=resize.Thumbnail(percentWidth,percentHeight,img,resize.Bicubic)
+	m := imaging.Thumbnail(img, percentWidth, percentHeight, imaging.Lanczos)
 
 	out, err := os.Create(thumbPath)
 
@@ -361,10 +388,10 @@ func createThumb(filepath string, filename string, user string, conf * CONFIG) (
 
 	// write new image to file
 	jpeg.Encode(out, m, nil)
-	if CONF.getAwsEnabled(){
+	if CONF.getAwsEnabled() {
 		InfoLog.Println(" AWS ENABLED *** addding thub to aws *** ")
-		thumbPath, err = PutInBucket(thumbPath,"/" + user + "/thumbs/"+ filename)
-		if nil != err{
+		thumbPath, err = PutInBucket(thumbPath, "/"+user+"/thumbs/"+filename)
+		if nil != err {
 			ErrorLog.Println(" failed to add to aws " + err.Error())
 		}
 	}
@@ -376,5 +403,5 @@ func parseDate(dateString string) time.Time {
 	if err != nil {
 		LogOnError(err, "failed to parse time")
 	}
-	return time;
+	return time
 }

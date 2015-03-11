@@ -1,86 +1,79 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"github.com/streadway/amqp"
 	"encoding/json"
-	"strings"
+	"fmt"
+	"github.com/streadway/amqp"
 	"io"
+	"log"
+	"strings"
 	"time"
 )
 
 type Message struct {
-	File string
-	User string
+	File   string
+	User   string
 	RESKEY string
-	Name string
-	}
-
-
-
+	Name   string
+}
 
 type AmqpCon struct {
 	CONNECTION *amqp.Connection
 }
 
-func connect()(* amqp.Connection,error){
+func connect() (*amqp.Connection, error) {
 
 	conn, err := amqp.Dial(CONF.GetRabbitURL())
 	//connClos <- amqp.ErrClosed
-	return conn,err;
+	return conn, err
 }
 
-
-func connectionListener(connErr chan * amqp.Error, stopChan chan bool){
-	ErrorLog.Println("Started connection Listener");
-	errMess:= <-connErr;
+func connectionListener(connErr chan *amqp.Error, stopChan chan bool) {
+	ErrorLog.Println("Started connection Listener")
+	errMess := <-connErr
 	if errMess.Code == amqp.FrameError || errMess.Code == amqp.ChannelError {
-		fmt.Println("recieed amqp error trying reconnect", errMess);
+		fmt.Println("recieed amqp error trying reconnect", errMess)
 		close(stopChan)
 
-		var conn * amqp.Connection;
-		var err error;
-		for{
-			fmt.Println("Trying to reconnect");
-			conn,err = connect();
+		var conn *amqp.Connection
+		var err error
+		for {
+			fmt.Println("Trying to reconnect")
+			conn, err = connect()
 			if err != nil {
 				fmt.Println(" failed to connect " + err.Error())
 				time.Sleep(2000)
-			}else{
+			} else {
 				break
 			}
 
 		}
-		startConsuming(conn);
-
+		startConsuming(conn)
 
 	}
 
 }
 
-func StartUp(){
+func StartUp() {
 	conn, err := connect()
-	FailOnError(err,"failed to connect");
+	FailOnError(err, "failed to connect")
 	startConsuming(conn)
 }
 
-func startConsuming(conn * amqp.Connection ) {
+func startConsuming(conn *amqp.Connection) {
 
 	defer conn.Close()
 	ch, err := conn.Channel()
 	FailOnError(err, "Failed to open a channel")
 	defer ch.Close()
 
-
-
-	q,err := ch.QueueDeclare(
+	q, err := ch.QueueDeclare(
 		"pics", // name
-		true,         // durable
-		false,        // delete when unused
-		false,        // exclusive
-		false,        // no-wait
-		nil,          // arguments
+		true,   // durable
+		false,  // delete when unused
+		false,  // exclusive
+		false,  // no-wait
+		nil,    // arguments
 	)
 	FailOnError(err, "Failed to declare a queue")
 
@@ -90,7 +83,6 @@ func startConsuming(conn * amqp.Connection ) {
 		false, // global
 	)
 	FailOnError(err, "Failed to set QoS")
-
 
 	msgs, err := ch.Consume(
 		q.Name, // queue
@@ -118,9 +110,9 @@ func startConsuming(conn * amqp.Connection ) {
 				ErrorLog.Println("error with rabbit msg " + err.Error())
 			}
 			fmt.Printf("%s \n", m.File)
-			updates:= make(chan string)
-			go UpdateJob(conn,m.RESKEY,updates)
-			go ProcessImg(m.Name,Picture{},m.User,CONF, updates,m.RESKEY)
+			updates := make(chan string)
+			go UpdateJob(conn, m.RESKEY, updates)
+			go ProcessImg(m.Name, Picture{}, m.User, CONF, updates, m.RESKEY)
 			fmt.Printf("finished with file %s \n", m.File)
 
 			d.Ack(true)
@@ -129,16 +121,15 @@ func startConsuming(conn * amqp.Connection ) {
 
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 	//casues the thread to block
-	connClos:= make(chan *amqp.Error)
+	connClos := make(chan *amqp.Error)
 	conn.NotifyClose(connClos)
-	connectionListener(connClos,forever);
+	connectionListener(connClos, forever)
 	<-forever
 
-	fmt.Println("stopping listening ");
+	fmt.Println("stopping listening ")
 }
 
-
-func UpdateJob(conn * amqp.Connection, resKey string, messages chan string ){
+func UpdateJob(conn *amqp.Connection, resKey string, messages chan string) {
 	channel, err := conn.Channel()
 	if err != nil {
 		FailOnError(err, "Failed to open a channel")
@@ -146,30 +137,25 @@ func UpdateJob(conn * amqp.Connection, resKey string, messages chan string ){
 
 	defer channel.Close()
 
-
-
-
-	if err != nil{
-		FailOnError(err, "failed to declare que ");
+	if err != nil {
+		FailOnError(err, "failed to declare que ")
 	}
 
-	for m:= range messages{
+	for m := range messages {
 
 		fmt.Println("message ready " + m + "publishing to " + resKey)
 
-
-
-		if err:= channel.Publish(
-			"amq.topic",   // publish to an exchange
-			"picjob.update." + resKey , // routing to 0 or more queues
-			false,      // mandatory
-			false,      // immediate
+		if err := channel.Publish(
+			"amq.topic",             // publish to an exchange
+			"picjob.update."+resKey, // routing to 0 or more queues
+			false, // mandatory
+			false, // immediate
 			amqp.Publishing{
-			ContentType:     "application/json",
-			ContentEncoding: "utf8",
-			Body:            []byte(m),
-			DeliveryMode:    amqp.Persistent, // 1=non-persistent, 2=persistent
-		},
+				ContentType:     "application/json",
+				ContentEncoding: "utf8",
+				Body:            []byte(m),
+				DeliveryMode:    amqp.Persistent, // 1=non-persistent, 2=persistent
+			},
 		); err != nil {
 			fmt.Printf("Exchange Publish: %s", err)
 		}
@@ -179,16 +165,16 @@ func UpdateJob(conn * amqp.Connection, resKey string, messages chan string ){
 
 type UPDATE_MESSAGE struct {
 	Message string
-	Status string
-	Jobid string
-	Type string
+	Status  string
+	Jobid   string
+	Type    string
 }
 
-func CreateMessage(message,status, jobid string)string{
-	msg:=UPDATE_MESSAGE{message,status,jobid,"PICTURE"}
-	json,err:=json.Marshal(msg)
-	if err !=nil{
+func CreateMessage(message, status, jobid string) string {
+	msg := UPDATE_MESSAGE{message, status, jobid, "PICTURE"}
+	json, err := json.Marshal(msg)
+	if err != nil {
 		fmt.Println("error " + err.Error())
 	}
-    return string(json)
+	return string(json)
 }
