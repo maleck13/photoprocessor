@@ -1,0 +1,42 @@
+{
+	"ImportPath": "github.com/maleck13/photoProcessor",
+	"GoVersion": "go1.3.3",
+	"Deps": [
+		{
+			"ImportPath": "github.com/disintegration/imaging",
+			"Rev": "05ebd029ad3e44a269962889e19ba25c262d829c"
+		},
+		{
+			"ImportPath": "github.com/gosexy/exif",
+			"Rev": "c1bd04a98f2b719743c963f720f52edf6e6c7227"
+		},
+		{
+			"ImportPath": "github.com/mitchellh/goamz/aws",
+			"Rev": "0cb2b82e7867c77a88c7bbea11c867695b6a63a0"
+		},
+		{
+			"ImportPath": "github.com/mitchellh/goamz/s3",
+			"Rev": "0cb2b82e7867c77a88c7bbea11c867695b6a63a0"
+		},
+		{
+			"ImportPath": "github.com/streadway/amqp",
+			"Rev": "6ffc9248c4b16699477e7411084c2402f2f0c351"
+		},
+		{
+			"ImportPath": "github.com/vaughan0/go-ini",
+			"Rev": "a98ad7ee00ec53921f08832bc06ecf7fd600e6a1"
+		},
+		{
+			"ImportPath": "golang.org/x/image/bmp",
+			"Rev": "08593990c4a6f1b9eb49ee955d6c2c3fbf4de1ef"
+		},
+		{
+			"ImportPath": "golang.org/x/image/tiff",
+			"Rev": "08593990c4a6f1b9eb49ee955d6c2c3fbf4de1ef"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2",
+			"Rev": "231ce7e0549b5ce60d35ed805bff505cab7098e4"
+		}
+	]
+}
