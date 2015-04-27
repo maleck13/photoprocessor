@@ -9,6 +9,6 @@ import (
 
 func StartApi(){
 
-	router:= NewApiRouter()
-	log.Fatal(http.ListenAndServe(":8881", router))
+	NewApiRouter()
+	log.Fatal(http.ListenAndServe(":9002", nil))
 }

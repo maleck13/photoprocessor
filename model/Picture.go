@@ -2,8 +2,8 @@ package model
 
 import (
 	"fmt"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"gopkg.in/mgo.v2"
 	"time"
 	"github.com/maleck13/photoProcessor/conf"
 	"github.com/maleck13/photoProcessor/logger"
@@ -52,11 +52,20 @@ func (pic *Picture) Save() error {
 	return nil
 }
 
-func FindByName(name string) (error, Picture) {
+func (pic * Picture)FindByNameAndUser(name, user string) (error, Picture) {
 	session := getDBSession()
 	defer session.Close()
 	c := session.DB(conf.CONF.GetDbName()).C(PIC_COLLECTION)
 	result := Picture{}
-	err := c.Find(bson.M{"name": name}).One(&result)
+	err := c.Find(bson.M{"name": name,"user":user}).One(&result)
 	return err, result
+}
+
+func (pic * Picture)GetPictureDateRange(user string)(error , []string){
+	session := getDBSession()
+	defer session.Close()
+	c := session.DB(conf.CONF.GetDbName()).C(PIC_COLLECTION)
+	var result [] string
+	err := c.Find(bson.M{"user":user}).Distinct("year",&result)
+	return err,result
 }

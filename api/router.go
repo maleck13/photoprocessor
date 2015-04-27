@@ -3,8 +3,6 @@ package api
 import (
 	"github.com/gorilla/mux"
 	"net/http"
-	"encoding/json"
-	"github.com/maleck13/photoProcessor/model"
 )
 
 type Route struct {
@@ -16,15 +14,14 @@ type Route struct {
 
 func NewApiRouter() *mux.Router{
 
-	router := mux.NewRouter().StrictSlash(true)
-
-	router.HandleFunc("/",IndexRoute);
-
+	router := mux.NewRouter()
+	router.HandleFunc("/pictures/{user}/{file}",GetPicture).Methods("GET")
+	router.HandleFunc("/pictures/{user}/upload",UploadHandler).Methods("POST")
+	router.HandleFunc("/pictures/range",GetYearRange).Methods("GET")
+	router.HandleFunc("/health",Ping).Methods("GET")
+	http.Handle("/", router)
 
 	return router;
 }
 
-func IndexRoute(wr http.ResponseWriter, req *http.Request){
-	pic := model.Picture{}
-	json.NewEncoder(wr).Encode(pic)
-}
+

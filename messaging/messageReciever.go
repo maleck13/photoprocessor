@@ -23,10 +23,13 @@ type AmqpCon struct {
 	CONNECTION *amqp.Connection
 }
 
+var conn * amqp.Connection;
+
 func connect() (*amqp.Connection, error) {
 
-	conn, err := amqp.Dial(conf.CONF.GetRabbitURL())
-	return conn, err
+	connect,err  := amqp.Dial(conf.CONF.GetRabbitURL())
+
+	return connect, err
 }
 
 func connectionListener(connErr chan *amqp.Error, stopChan chan bool) {
@@ -59,11 +62,11 @@ func StartMessaging(){
 	startMessageConsuming(conn)
 }
 
-func startMessageConsuming(conn *amqp.Connection) {
-
+func startMessageConsuming(c *amqp.Connection) {
+	conn = c;
 	go func() {
-		defer conn.Close()
-		ch, err := conn.Channel()
+		defer c.Close()
+		ch, err := c.Channel()
 		errorHandler.FailOnError(err, "Failed to open a channel")
 		defer ch.Close()
 
@@ -111,8 +114,8 @@ func startMessageConsuming(conn *amqp.Connection) {
 				}
 				fmt.Printf("%s \n", m.File)
 				updates := make(chan string)
-				go UpdateJob(conn, m.RESKEY, updates)
-				go processor.ProcessImg(m.Name, model.Picture{}, m.User, updates, m.RESKEY)
+				go UpdateJob(m.ResKey, updates)
+				go processor.ProcessImg(m.Name, model.Picture{}, m.User, updates, m.ResKey)
 				fmt.Printf("finished with file %s \n", m.File)
 
 				d.Ack(true)
@@ -122,7 +125,7 @@ func startMessageConsuming(conn *amqp.Connection) {
 		log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 		//casues the thread to block
 		connClose := make(chan *amqp.Error)
-		conn.NotifyClose(connClose)
+		c.NotifyClose(connClose)
 		connectionListener(connClose, forever)
 		<-forever
 
@@ -130,7 +133,23 @@ func startMessageConsuming(conn *amqp.Connection) {
 	}()
 }
 
-func UpdateJob(conn *amqp.Connection, resKey string, messages chan string) {
+func SetUpResponseQue(id string){
+	ch, err := conn.Channel()
+	errorHandler.FailOnError(err, "Failed to open a channel")
+	//defer ch.Close()
+	fmt.Println("decaring queue " + id)
+	var timeout int32 = 60000 * 5
+	_, err = ch.QueueDeclare(
+		id, // name
+		true,   // durable
+		false,  // delete when unused
+		false,  // exclusive
+		false,  // no-wait
+		amqp.Table{"x-expires":timeout});
+	ch.QueueBind(id,"picjob.update."+id,"amq.topic",false,nil)
+}
+
+func UpdateJob(resKey string, messages chan string) {
 	channel, err := conn.Channel()
 	if err != nil {
 		errorHandler.FailOnError(err, "Failed to open a channel")

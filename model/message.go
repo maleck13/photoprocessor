@@ -2,6 +2,6 @@ package model
 type Message struct {
 	File   string
 	User   string
-	RESKEY string
+	ResKey string
 	Name   string
 }
