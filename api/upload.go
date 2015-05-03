@@ -31,7 +31,9 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer file.Close()
 	path := conf.CONF.GetPhotoDir() + "/" + user
+	thumbPath := conf.CONF.GetPhotoDir() + "/" + user + "/thumbs"
 	err = os.MkdirAll(path,os.ModePerm)
+	err = os.MkdirAll(thumbPath,os.ModePerm)
 	if err != nil {
 		fmt.Fprintf(w, "Unable to create the file for writing. Check your write access privilege " + err.Error())
 		return
@@ -57,7 +59,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	uidKey := user + header.Filename;
 
 	updates := make(chan string)
-	messaging.SetUpResponseQue(uidKey)
+	//messaging.SetUpResponseQue(uidKey)
 	go messaging.UpdateJob( uidKey, updates)
 	go processor.ProcessImg(header.Filename, model.Picture{}, user, updates, uidKey)
 

@@ -18,6 +18,7 @@ func NewApiRouter() *mux.Router{
 	router.HandleFunc("/pictures/{user}/{file}",GetPicture).Methods("GET")
 	router.HandleFunc("/pictures/{user}/upload",UploadHandler).Methods("POST")
 	router.HandleFunc("/pictures/range",GetYearRange).Methods("GET")
+	router.HandleFunc("/pictures",GetPicturesInRange).Methods("GET")
 	router.HandleFunc("/health",Ping).Methods("GET")
 	http.Handle("/", router)
 

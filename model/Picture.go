@@ -69,3 +69,13 @@ func (pic * Picture)GetPictureDateRange(user string)(error , []string){
 	err := c.Find(bson.M{"user":user}).Distinct("year",&result)
 	return err,result
 }
+
+func (pic * Picture)GetPicturesInRange(user string , from, to int64)(error,[]Picture){
+	session := getDBSession();
+	defer session.Close()
+	c := session.DB(conf.CONF.GetDbName()).C(PIC_COLLECTION)
+	var result []Picture
+	fmt.Print(bson.M{"user":user,"timestamp":bson.M{"$gte": to, "$lte": from}})
+	err :=c.Find(bson.M{"user":user,"timestamp":bson.M{"$gte": to, "$lte": from}}).All(&result)
+	return err,result
+}
