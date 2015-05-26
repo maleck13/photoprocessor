@@ -20,6 +20,8 @@ func GetPicture(wr http.ResponseWriter, req *http.Request){
 	fmt.Println("GetPicture %s", req.URL.Query())
 	file := vars["file"]
 	user := vars["user"]
+
+	fmt.Println(" file ", file, "user ", user);
 	pic:=&model.Picture{}
 
 	err,_ :=pic.FindByNameAndUser(file,user)
@@ -35,6 +37,7 @@ func GetPicture(wr http.ResponseWriter, req *http.Request){
 		if nil != err{
 			fmt.Println("err opening file " + err.Error())
 		}
+
 		io.Copy(wr,f)
 	}
 }
@@ -121,4 +124,77 @@ func GetPicturesInRange(wr http.ResponseWriter, req * http.Request){
 func daysIn(m time.Month, year int) int {
 	// This is equivalent to time.daysIn(m, year).
 	return time.Date(year, m+1, 0, 0, 0, 0, 0, time.UTC).Day()
+}
+
+func UpdatePictureData(wr http.ResponseWriter, req * http.Request){
+	decoder := json.NewDecoder(req.Body)
+	var updatedInfo model.Picture;
+	err := decoder.Decode(&updatedInfo)
+	enc := json.NewEncoder(wr)
+	fmt.Println(updatedInfo)
+	if nil != err{
+		enc.Encode(err.Error())
+		return
+	}
+	vars := mux.Vars(req)
+	fmt.Println("mux vars ", vars)
+	picId := vars["id"]
+	fmt.Println("id = " + picId)
+	pic := &model.Picture{}
+	err,fPic := pic.GetPictureByIdAndUser(picId, updatedInfo.User)
+	if nil != err{
+		fmt.Println("err getting pic ", err)
+		enc.Encode(err)
+		return
+	}
+	if "" != updatedInfo.Name{
+		fPic.Name = updatedInfo.Name
+	}
+
+	if updatedInfo.Complete {
+		fPic.Complete = updatedInfo.Complete;
+	}
+
+	length:= len(updatedInfo.LonLat);
+
+	if 0 != length{
+		fPic.LonLat = make([]float64, 2)
+		if 1 <= length {
+			fPic.LonLat[0] = updatedInfo.LonLat[0]
+		}
+		if 2 <= length {
+			fPic.LonLat[1] = updatedInfo.LonLat[1]
+		}
+	}
+	if "" != updatedInfo.Tags {
+		fPic.Tags = updatedInfo.Tags
+	}
+
+	fmt.Printf("fPic %s ",fPic)
+	err = fPic.Save();
+
+	if nil != err{
+		enc.Encode(err)
+		return
+	}
+
+	enc.Encode(fPic)
+
+
+}
+
+func GetIncompletePictures(wr http.ResponseWriter, req *http.Request){
+	enc := json.NewEncoder(wr)
+	user := req.URL.Query().Get("user")
+	pic := &model.Picture{}
+	err,pics := pic.GetPicturesMissingData(user);
+	if nil != err{
+		enc.Encode(err)
+		return
+	}
+	if nil == pics{
+		pics = make([]model.Picture, 0);
+	}
+	enc.Encode(pics)
+
 }

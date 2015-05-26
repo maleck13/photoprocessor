@@ -5,6 +5,9 @@ import (
 	"log"
 )
 
+type ApiError struct{
+	Error string
+}
 
 
 func StartApi(){

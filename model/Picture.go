@@ -10,6 +10,8 @@ import (
 )
 
 type Picture struct {
+
+	Id bson.ObjectId `json:"_id" bson:"_id,omitempty"`
 Name      string
 Path      string
 Thumb     string
@@ -18,6 +20,9 @@ Time      time.Time
 TimeStamp int64
 User      string
 Year      string
+Tags 	  string
+Complete  bool
+Img string
 }
 
 
@@ -44,7 +49,13 @@ func (pic *Picture) Save() error {
 	session := getDBSession()
 	defer session.Close()
 	c := session.DB(conf.CONF.GetDbName()).C(PIC_COLLECTION)
-	err := c.Insert(pic)
+	var err error;
+	fmt.Println("saving pic " + pic.Id)
+	if "" != pic.Id {
+		_,err = c.UpsertId(pic.Id,pic)
+	}else {
+		err = c.Insert(pic)
+	}
 	if err != nil {
 		logger.ErrorLog.Println(err.Error())
 		return err
@@ -57,7 +68,7 @@ func (pic * Picture)FindByNameAndUser(name, user string) (error, Picture) {
 	defer session.Close()
 	c := session.DB(conf.CONF.GetDbName()).C(PIC_COLLECTION)
 	result := Picture{}
-	err := c.Find(bson.M{"name": name,"user":user}).One(&result)
+	err := c.Find(bson.M{"img": name,"user":user}).One(&result)
 	return err, result
 }
 
@@ -77,5 +88,23 @@ func (pic * Picture)GetPicturesInRange(user string , from, to int64)(error,[]Pic
 	var result []Picture
 	fmt.Print(bson.M{"user":user,"timestamp":bson.M{"$gte": to, "$lte": from}})
 	err :=c.Find(bson.M{"user":user,"timestamp":bson.M{"$gte": to, "$lte": from}}).All(&result)
+	return err,result
+}
+
+func (pic * Picture)GetPictureByIdAndUser(id, user string)(error, Picture){
+	session := getDBSession()
+	defer session.Close()
+	c := session.DB(conf.CONF.GetDbName()).C(PIC_COLLECTION)
+	var result Picture
+	err := c.Find(bson.M{"user":user,"_id":bson.ObjectIdHex(id)}).One(&result)
+	return err,result
+}
+
+func (pic * Picture)GetPicturesMissingData(user string)(error,[]Picture){
+	session := getDBSession();
+	defer session.Close()
+	c := session.DB(conf.CONF.GetDbName()).C(PIC_COLLECTION)
+	var result []Picture
+	err :=c.Find(bson.M{"complete":false}).All(&result)
 	return err,result
 }

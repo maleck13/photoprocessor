@@ -12,6 +12,7 @@ import (
 	"github.com/maleck13/photoProcessor/messaging"
 	"github.com/gorilla/mux"
 	"encoding/json"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func UploadHandler(w http.ResponseWriter, r *http.Request) {
@@ -59,9 +60,11 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	uidKey := user + header.Filename;
 
 	updates := make(chan string)
+	pic:=model.Picture{}
+	pic.Id = bson.NewObjectId()
 	//messaging.SetUpResponseQue(uidKey)
 	go messaging.UpdateJob( uidKey, updates)
-	go processor.ProcessImg(header.Filename, model.Picture{}, user, updates, uidKey)
+	go processor.ProcessImg(header.Filename, pic, user, updates, uidKey)
 
-	json.NewEncoder(w).Encode(&model.Message{Name:header.Filename, File:fullPath, User:user, ResKey:uidKey})
+	json.NewEncoder(w).Encode(&model.Message{Name:header.Filename, FileId:pic.Id, File:fullPath, User:user, ResKey:uidKey})
 }

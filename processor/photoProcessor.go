@@ -19,7 +19,6 @@ import (
 	"github.com/maleck13/photoProcessor/conf"
 	"github.com/maleck13/photoProcessor/logger"
 	"github.com/maleck13/photoProcessor/storage"
-
 )
 
 const (
@@ -115,24 +114,26 @@ func ProcessImg(fileName string, pic model.Picture, user string, updateChanel ch
 
 	tags := reader.Tags
 
+
 	for key, value := range tags {
 		fmt.Println("Key:", key, "Value:", value)
 	}
+
 
 	var lonLat []float64
 
 	err = validateLonLat(tags)
 
+
+
+	var hasLonLat, hasTime bool;
 	if err != nil {
-		if conf.CONF.GetUseDefaultLonLat() {
-			logger.InfoLog.Println("using default lon lat ")
-			lonLat = conf.CONF.GetDefaultLonLat()
-		} else {
-			errorHandler.LogOnError(err, "missing data")
-			return
-		}
+		msg = CreateMessage("Error no longlat exif data ", "error", jobId)
+		errorHandler.LogOnError(err, "missing lonlat data")
+		hasLonLat = false
 	} else {
 		lonLat = convertDegToDec(tags[LATITUDE], tags[NORTH_OR_SOUTH_LAT], tags[LONGITUDE], tags[EAST_OR_WEST_LON])
+		hasLonLat = true;
 	}
 
 	err = validateTime(tags)
@@ -140,12 +141,18 @@ func ProcessImg(fileName string, pic model.Picture, user string, updateChanel ch
 		msg = CreateMessage("Error no time exif data ", "error", jobId)
 		updateChanel <- msg
 		errorHandler.LogOnError(err, "missing data")
-		return
+		hasTime = false;
+	}else{
+		hasTime = true;
 	}
 
+
+	pic.Complete = (hasTime && hasLonLat)
 	pic.LonLat = lonLat
 	pic.Name = fileName
+	pic.Img = fileName
 	pic.Path = completedPath
+	pic.Tags = "";
 	thumb, err := createThumb(path, fileName, user, tags)
 	if err != nil {
 		errorHandler.LogOnError(err, "failed to create thumb ignoring img "+fileName)
@@ -192,13 +199,14 @@ func ReadExifData(filePath string) (map[string]string, error) {
 }
 
 func validateLonLat(info map[string]string) error {
-	_, ok := info[LONGITUDE]
-	if !ok {
+	ok, hasKey := info[LONGITUDE]
+	fmt.Println("validate lon lat val is " + ok)
+	if !hasKey || "" == ok{
 		return errors.New("no " + LONGITUDE + " field")
 	}
-	_, ok = info[LATITUDE]
+	ok, hasKey = info[LATITUDE]
 
-	if !ok {
+	if !hasKey || "" == ok{
 		return errors.New("no " + LATITUDE + " field")
 	}
 	return nil

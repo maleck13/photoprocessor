@@ -15,11 +15,18 @@ type Route struct {
 func NewApiRouter() *mux.Router{
 
 	router := mux.NewRouter()
-	router.HandleFunc("/pictures/{user}/{file}",GetPicture).Methods("GET")
-	router.HandleFunc("/pictures/{user}/upload",UploadHandler).Methods("POST")
-	router.HandleFunc("/pictures/range",GetYearRange).Methods("GET")
-	router.HandleFunc("/pictures",GetPicturesInRange).Methods("GET")
+
+	router.HandleFunc("/picture/{id}",UpdatePictureData).Methods("PUT")
 	router.HandleFunc("/health",Ping).Methods("GET")
+
+	sub := router.PathPrefix("/pictures").Subrouter()
+	sub.Path("/").HandlerFunc(GetPicturesInRange).Methods("GET")
+	sub.HandleFunc("/{user}/{file}",GetPicture).Methods("GET")
+	sub.HandleFunc("/{user}/upload",UploadHandler).Methods("POST")
+	sub.Path("/range").HandlerFunc(GetYearRange).Methods("GET")
+	sub.Path("/incomplete").HandlerFunc(GetIncompletePictures).Methods("GET")
+
+
 	http.Handle("/", router)
 
 	return router;
