@@ -11,6 +11,8 @@ import (
 	"github.com/maleck13/photoProcessor/conf"
 	"strconv"
 	"time"
+	"github.com/mitchellh/goamz/aws"
+	"github.com/mitchellh/goamz/s3"
 )
 
 
@@ -32,13 +34,39 @@ func GetPicture(wr http.ResponseWriter, req *http.Request){
 		json.NewEncoder(wr).Encode(err)
 	}else {
 		//get file path stream back to client io.Copy(w, resp.Body)
-		path := conf.CONF.GetPhotoDir() + "/" + user + "/thumbs/" + file
-		f,err := os.Open(path)
-		if nil != err{
-			fmt.Println("err opening file " + err.Error())
+		if conf.CONF.GetAwsEnabled() {
+			fmt.Println("aws enabled serving image from aws");
+			thumbPath := user + "/thumbs/" + file
+			auth, err := aws.GetAuth(conf.CONF.GetAwsAccessKey(), conf.CONF.GetAwsSecretKey())
+
+			if nil != err {
+				fmt.Println("aws enabled err after auth " + err.Error());
+				wr.WriteHeader(401)
+				wr.Write([]byte(err.Error()))
+				return
+
+			}
+			s3conn := s3.New(auth, aws.EUWest)
+			bucket := s3conn.Bucket("photo-map")
+			data, err := bucket.Get(thumbPath)
+
+			if nil != err {
+				fmt.Println("aws enabled err after get bucket " + err.Error());
+				wr.WriteHeader(500)
+				wr.Write([]byte(err.Error()))
+			}else {
+				wr.Write(data)
+			}
+		}else {
+			path := conf.CONF.GetPhotoDir() + "/" + user + "/thumbs/" + file
+			f, err := os.Open(path)
+			if nil != err {
+				fmt.Println("err opening file " + err.Error())
+			}
+			io.Copy(wr,f)
 		}
 
-		io.Copy(wr,f)
+
 	}
 }
 

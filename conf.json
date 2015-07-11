@@ -7,6 +7,6 @@
   "useDefaultLonLat":true,
   "defaultLonLat":[-7.138333333333334,52.2555],
   "defaultUser":"maleck13",
-  "rabbiturl":"amqp://photobox:aw3se4dr5@192.168.59.103:5672/"
+  "rabbiturl":"amqp://photobox:aw3se4dr5@rabbitmq:5672/"
 
 }

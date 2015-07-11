@@ -7,5 +7,6 @@ ADD . /gopath/src/github.com/maleck13/photoProcessor
 RUN go get github.com/maleck13/photoProcessor
 RUN ls -al /gopath/bin
 ENV PHOTO_PROC_CONF /etc/photoprocessor/conf.json
+EXPOSE 9002
 CMD []
 ENTRYPOINT ["/gopath/bin/photoProcessor"]
