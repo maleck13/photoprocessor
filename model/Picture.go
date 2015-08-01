@@ -20,10 +20,12 @@ Time      time.Time
 TimeStamp int64
 User      string
 Year      string
-Tags 	  string
+Tags 	  []string
 Complete  bool
 Img string
 }
+
+
 
 
 
@@ -107,4 +109,43 @@ func (pic * Picture)GetPicturesMissingData(user string)(error,[]Picture){
 	var result []Picture
 	err :=c.Find(bson.M{"complete":false}).All(&result)
 	return err,result
+}
+
+func (pic * Picture) DeletePictureById(id, user string)(error){
+	session := getDBSession()
+	defer session.Close()
+	c := session.DB(conf.CONF.GetDbName()).C(PIC_COLLECTION)
+	err := c.Remove(bson.M{"user":user,"_id":bson.ObjectIdHex(id)});
+	return err;
+}
+
+func (pic * Picture) GetPicturesByLonLatAndUser(lon,lat float64, dist int, user string)(error,[]Picture){
+	//as distance is in meters we want multiply the sent value
+	dist = dist * 1000;
+	session := getDBSession()
+	defer session.Close()
+	c := session.DB(conf.CONF.GetDbName()).C(PIC_COLLECTION)
+	var results []Picture
+	err := c.Find(bson.M{
+		"lonlat": bson.M{
+			"$near": bson.M{
+				"$geometry": bson.M{
+					"type":        "Point",
+					"coordinates": []float64{lon, lat},
+				},
+				"$maxDistance": dist,
+			},
+		},
+		"user":user,
+	}).All(&results)
+	return err,results
+}
+
+func (pic * Picture) GetPicturesByTagAndUser(tag , user string)(error,[]Picture){
+	session := getDBSession()
+	defer session.Close()
+	c := session.DB(conf.CONF.GetDbName()).C(PIC_COLLECTION)
+	var results []Picture
+	err := c.Find(bson.M{"user":user,"tags":bson.M{"$in":[]string{tag}}}).All(&results)
+	return err, results
 }

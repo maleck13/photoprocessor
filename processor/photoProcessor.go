@@ -152,7 +152,7 @@ func ProcessImg(fileName string, pic model.Picture, user string, updateChanel ch
 	pic.Name = fileName
 	pic.Img = fileName
 	pic.Path = completedPath
-	pic.Tags = "";
+	pic.Tags = []string{};
 	thumb, err := createThumb(path, fileName, user, tags)
 	if err != nil {
 		errorHandler.LogOnError(err, "failed to create thumb ignoring img "+fileName)
@@ -331,19 +331,8 @@ func createThumb(filepath string, filename string, user string, exif map[string]
 		return thumbPath, err
 	}
 
-	// resize to width 1000 using Lanczos resampling
-	// and preserve aspect ratio
-	var percentHeight, percentWidth int
-	percentHeight = int((img.Bounds().Max.Y / 100) * 15)
-	percentWidth = int((img.Bounds().Max.X / 100) * 15)
-	//bit arbitary
-	if percentHeight < 150 {
-		percentHeight = 150
-	}
 
-	if percentWidth < 150 {
-		percentWidth = 150
-	}
+
 
 	orientate := exif["Orientation"]
 	if "Right-top" == orientate {
@@ -351,7 +340,13 @@ func createThumb(filepath string, filename string, user string, exif map[string]
 		img = imaging.Rotate270(img)
 	}
 
-	m := imaging.Thumbnail(img, percentWidth, percentHeight, imaging.Lanczos)
+	// resize to width 1000 using Lanczos resampling
+	// and preserve aspect ratio
+//	var percentHeight, percentWidth int
+//	percentHeight = (img.Bounds().Max.Y / 100) * 30
+//	percentWidth = (img.Bounds().Max.X / 100) * 15
+
+	m := imaging.Thumbnail(img, 300, 300,imaging.Lanczos)
 
 	out, err := os.Create(thumbPath)
 

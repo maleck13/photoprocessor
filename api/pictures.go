@@ -13,6 +13,8 @@ import (
 	"time"
 	"github.com/mitchellh/goamz/aws"
 	"github.com/mitchellh/goamz/s3"
+	"github.com/maleck13/photoProcessor/errorHandler"
+	"net/url"
 )
 
 
@@ -194,7 +196,7 @@ func UpdatePictureData(wr http.ResponseWriter, req * http.Request){
 			fPic.LonLat[1] = updatedInfo.LonLat[1]
 		}
 	}
-	if "" != updatedInfo.Tags {
+	if nil != updatedInfo.Tags && len(updatedInfo.Tags) > 0 {
 		fPic.Tags = updatedInfo.Tags
 	}
 
@@ -225,4 +227,82 @@ func GetIncompletePictures(wr http.ResponseWriter, req *http.Request){
 	}
 	enc.Encode(pics)
 
+}
+
+func DeletePicture(wr http.ResponseWriter, req *http.Request ){
+	vars := mux.Vars(req)
+	userId := vars["user"]
+	picId := vars["id"]
+	enc := json.NewEncoder(wr)
+	pic := &model.Picture{}
+	err := pic.DeletePictureById(picId, userId)
+	if nil != err{
+		if nil != err{
+			enc.Encode(err)
+			return
+		}
+	}
+}
+
+func GetPicturesByLocation(wr http.ResponseWriter, req *http.Request){
+
+	var(
+		err error
+		lon float64
+		lat float64
+		dist int
+		userId  string
+	)
+
+	userId = req.URL.Query().Get("user")
+	lon,err = strconv.ParseFloat(req.URL.Query().Get("lon"),64);
+	if nil != err {
+		errorHandler.SendErrorResponse(wr, 500, err);
+		return
+	}
+	lat,err = strconv.ParseFloat(req.URL.Query().Get("lat"),64);
+	if nil != err {
+		errorHandler.SendErrorResponse(wr, 500, err);
+		return
+	}
+    dist, err = strconv.Atoi(req.URL.Query().Get("dist"))
+	if nil != err {
+		errorHandler.SendErrorResponse(wr, 500, err);
+		return
+	}
+	enc := json.NewEncoder(wr)
+	pic := &model.Picture{}
+	err,pics := pic.GetPicturesByLonLatAndUser(lon,lat,dist,userId)
+	if nil != err {
+		errorHandler.SendErrorResponse(wr, 500, err);
+		return
+	}
+	if nil == pics{
+		pics = make([]model.Picture, 0);
+	}
+	enc.Encode(pics)
+}
+
+func GetPicturesByTag (wr http.ResponseWriter,req *http.Request ){
+	var(
+		userId string
+		tag string
+		values url.Values
+		err error
+		pics []model.Picture
+	)
+	enc := json.NewEncoder(wr)
+	values = req.URL.Query();
+	userId = values.Get("user")
+	tag = values.Get("tag")
+	pic := &model.Picture{}
+	err, pics = pic.GetPicturesByTagAndUser(tag,userId)
+	if nil != err {
+		errorHandler.SendErrorResponse(wr, 500, err);
+		return
+	}
+	if nil == pics{
+		pics = make([]model.Picture, 0);
+	}
+	enc.Encode(pics)
 }
